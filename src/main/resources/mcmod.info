@@ -1,0 +1,16 @@
+[
+{
+  "modid": "PerfectSpawn",
+  "name": "Perfect Spawn",
+  "description": "A mod that allows you to specify the exact player spawn.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["lumien"],
+  "credits": "lumien",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
