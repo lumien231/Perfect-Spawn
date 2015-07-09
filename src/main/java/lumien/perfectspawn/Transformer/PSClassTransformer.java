@@ -38,6 +38,9 @@ public class PSClassTransformer implements IClassTransformer
 	@Override
 	public byte[] transform(String name, String transformedName, byte[] data)
 	{
+		if (data == null)
+			return null;
+
 		logger.log(Level.DEBUG, "Transforming "+name);
 		ClassNode classNode = new ClassNode();
 		ClassReader classReader = new ClassReader(data);
