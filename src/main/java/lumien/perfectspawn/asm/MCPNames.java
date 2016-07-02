@@ -1,4 +1,4 @@
-package lumien.perfectspawn.Transformer;
+package lumien.perfectspawn.asm;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,7 +24,7 @@ public class MCPNames
 		{
 			String mappingDir;
 
-			mappingDir = "./../build/unpacked/conf/";
+			mappingDir = "./../mcp/";
 
 			fields = readMappings(new File(mappingDir + "fields.csv"));
 			methods = readMappings(new File(mappingDir + "methods.csv"));

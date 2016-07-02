@@ -1,48 +1,52 @@
-package lumien.perfectspawn.Transformer;
+package lumien.perfectspawn.asm;
 
-import java.util.Iterator;
-
-import lumien.perfectspawn.Core.CoreHandler;
+import static org.objectweb.asm.Opcodes.ACONST_NULL;
+import static org.objectweb.asm.Opcodes.ALOAD;
+import static org.objectweb.asm.Opcodes.ARETURN;
+import static org.objectweb.asm.Opcodes.BIPUSH;
+import static org.objectweb.asm.Opcodes.DUP;
+import static org.objectweb.asm.Opcodes.GETSTATIC;
+import static org.objectweb.asm.Opcodes.IFLT;
+import static org.objectweb.asm.Opcodes.IFNULL;
+import static org.objectweb.asm.Opcodes.IF_ICMPEQ;
+import static org.objectweb.asm.Opcodes.IF_ICMPNE;
+import static org.objectweb.asm.Opcodes.INVOKESTATIC;
+import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
+import static org.objectweb.asm.Opcodes.IRETURN;
+import static org.objectweb.asm.Opcodes.POP;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
-import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
-import static org.objectweb.asm.Opcodes.*;
 
 import net.minecraft.launchwrapper.IClassTransformer;
-import net.minecraft.launchwrapper.Launch;
 
 public class PSClassTransformer implements IClassTransformer
 {
-	String OBF_SERVER_CONFIGURATION_MANAGER = "ld";
-	String OBF_WORLD_PROVIDER = "apa";
-	String BED_OBFUSCATED = "aht";
-
 	Logger logger = LogManager.getLogger("PerfectSpawnCore");
 
 	@Override
 	public byte[] transform(String name, String transformedName, byte[] data)
 	{
-		logger.log(Level.DEBUG, "Transforming "+name);
 		ClassNode classNode = new ClassNode();
 		ClassReader classReader = new ClassReader(data);
 		classReader.accept(classNode, 0);
-		
+
 		if (classNode.superName.equals("net/minecraft/world/WorldProvider") || classNode.superName.equals("net/minecraft/world/WorldProviderHell") || classNode.superName.equals("net/minecraft/world/WorldProviderSurface") || classNode.superName.equals("net/minecraft/world/apa") || transformedName.equals("net.minecraft.world.WorldProvider"))
 		{
 			return patchWorldProvider(data);
@@ -55,7 +59,68 @@ public class PSClassTransformer implements IClassTransformer
 		{
 			return patchDedicatedServer(data);
 		}
+		else if (transformedName.equals("net.minecraft.entity.player.EntityPlayer"))
+		{
+			return patchEntityPlayer(data);
+		}
 		return data;
+	}
+
+	private byte[] patchEntityPlayer(byte[] data)
+	{
+		logger.log(Level.INFO, "Patching EntityPlayer Class");
+		ClassNode classNode = new ClassNode();
+		ClassReader classReader = new ClassReader(data);
+		classReader.accept(classNode, 0);
+
+		String onUpdateName = MCPNames.method("func_70071_h_");
+		MethodNode onUpdate = null;
+
+		for (MethodNode mn : classNode.methods)
+		{
+			if (mn.name.equals(onUpdateName))
+			{
+				onUpdate = mn;
+				break;
+			}
+		}
+
+		if (onUpdate != null)
+		{
+			String isDayTime = MCPNames.method("func_72935_r");
+
+			for (int i = 0; i < onUpdate.instructions.size(); i++)
+			{
+				AbstractInsnNode ain = onUpdate.instructions.get(i);
+				if (ain instanceof MethodInsnNode)
+				{
+					MethodInsnNode min = (MethodInsnNode) ain;
+
+					if (min.name.equals(isDayTime))
+					{
+						AbstractInsnNode nextNode = onUpdate.instructions.get(i + 1);
+						if (nextNode != null && nextNode instanceof JumpInsnNode)
+						{
+							logger.log(Level.INFO, "- Patched Staying in Bed Check");
+							JumpInsnNode jin = (JumpInsnNode) nextNode;
+
+							InsnList toInsert = new InsnList();
+							toInsert.add(new VarInsnNode(ALOAD, 0));
+							toInsert.add(new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/core/CoreHandler", "canWakeUp", "(Lnet/minecraft/entity/player/EntityPlayer;)Z", false));
+							toInsert.add(new JumpInsnNode(Opcodes.IFEQ, new LabelNode(jin.label.getLabel())));
+
+							onUpdate.instructions.insert(jin, toInsert);
+						}
+					}
+				}
+			}
+
+		}
+
+		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+		classNode.accept(writer);
+
+		return writer.toByteArray();
 	}
 
 	private byte[] patchDedicatedServer(byte[] data)
@@ -64,8 +129,8 @@ public class PSClassTransformer implements IClassTransformer
 		ClassNode classNode = new ClassNode();
 		ClassReader classReader = new ClassReader(data);
 		classReader.accept(classNode, 0);
-		
-		String isBlockProtectedName = MCPNames.method("func_96290_a");
+
+		String isBlockProtectedName = MCPNames.method("func_175579_a");
 		MethodNode isBlockProtected = null;
 
 		for (MethodNode mn : classNode.methods)
@@ -76,36 +141,36 @@ public class PSClassTransformer implements IClassTransformer
 				break;
 			}
 		}
-		
-		if (isBlockProtected!=null)
+
+		if (isBlockProtected != null)
 		{
 			for (int i = 0; i < isBlockProtected.instructions.size(); i++)
 			{
 				AbstractInsnNode ain = isBlockProtected.instructions.get(i);
 
-				if (ain instanceof FieldInsnNode)
+				if (ain instanceof MethodInsnNode)
 				{
-					FieldInsnNode fin = (FieldInsnNode) ain;
-					if (fin.getOpcode() == GETFIELD)
+					MethodInsnNode min = (MethodInsnNode) ain;
+					if (min.getOpcode() == INVOKEVIRTUAL)
 					{
-						if (fin.name.equals(MCPNames.field("field_76574_g")))
+						if (min.name.equals(MCPNames.method("func_186068_a")))
 						{
 							logger.log(Level.INFO, "- Patched Spawn Protection Control");
 
-							isBlockProtected.instructions.insert(fin,new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/Core/CoreHandler", "isBlockNotProtectedByDimension", "(I)Z"));
+							isBlockProtected.instructions.insert(min, new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/core/CoreHandler", "isBlockNotProtectedByDimension", "(I)Z", false));
 							break;
 						}
 					}
 				}
 			}
 		}
-		
+
 		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 		classNode.accept(writer);
 
 		return writer.toByteArray();
 	}
-	
+
 	private byte[] patchBed(byte[] data)
 	{
 		logger.log(Level.INFO, "Patching Bed Class");
@@ -113,7 +178,7 @@ public class PSClassTransformer implements IClassTransformer
 		ClassReader classReader = new ClassReader(data);
 		classReader.accept(classNode, 0);
 
-		String onBlockActivatedName = MCPNames.method("func_149727_a");
+		String onBlockActivatedName = MCPNames.method("func_180639_a");
 		MethodNode onBlockActivated = null;
 
 		for (MethodNode mn : classNode.methods)
@@ -193,7 +258,7 @@ public class PSClassTransformer implements IClassTransformer
 			}
 		}
 		String worldProviderName = "net/minecraft/world/WorldProvider";
-		String chunkCoordinatesName = "net/minecraft/util/ChunkCoordinates";
+		String blockPosName = "net/minecraft/util/math/BlockPos";
 
 		if (canRespawnHere != null)
 		{
@@ -208,7 +273,7 @@ public class PSClassTransformer implements IClassTransformer
 			canRespawnHere.instructions.insert(l1);
 			canRespawnHere.instructions.insert(new JumpInsnNode(IFLT, l2));
 			canRespawnHere.instructions.insert(new InsnNode(DUP));
-			canRespawnHere.instructions.insert(new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/Core/CoreHandler", "canRespawnHere", "(L" + worldProviderName + ";)I"));
+			canRespawnHere.instructions.insert(new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/core/CoreHandler", "canRespawnHere", "(L" + worldProviderName + ";)I", false));
 			canRespawnHere.instructions.insert(new VarInsnNode(ALOAD, 0));
 			canRespawnHere.instructions.insert(l0);
 		}
@@ -227,34 +292,16 @@ public class PSClassTransformer implements IClassTransformer
 			getRespawnDimension.instructions.insert(new JumpInsnNode(IF_ICMPEQ, l2));
 			getRespawnDimension.instructions.insert(new IntInsnNode(BIPUSH, -126));
 			getRespawnDimension.instructions.insert(new InsnNode(DUP));
-			getRespawnDimension.instructions.insert(new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/Core/CoreHandler", "getRespawnDimension", "(L" + worldProviderName + ";L" + entityPlayerMPName + ";)I"));
+			getRespawnDimension.instructions.insert(new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/core/CoreHandler", "getRespawnDimension", "(L" + worldProviderName + ";L" + entityPlayerMPName + ";)I", false));
 			getRespawnDimension.instructions.insert(new VarInsnNode(ALOAD, 1));
 			getRespawnDimension.instructions.insert(new VarInsnNode(ALOAD, 0));
 			getRespawnDimension.instructions.insert(l0);
 		}
 
-		if (isSurfaceWorld != null)
-		{
-			logger.log(Level.INFO, "- Patched isSurfaceWorld");
-			LabelNode l0 = new LabelNode(new Label());
-			LabelNode l1 = new LabelNode(new Label());
-			LabelNode l2 = new LabelNode(new Label());
-
-			isSurfaceWorld.instructions.insert(l2);
-			isSurfaceWorld.instructions.insert(new InsnNode(IRETURN));
-			isSurfaceWorld.instructions.insert(l1);
-			isSurfaceWorld.instructions.insert(new JumpInsnNode(IF_ICMPEQ, l2));
-			isSurfaceWorld.instructions.insert(new IntInsnNode(BIPUSH, -126));
-			isSurfaceWorld.instructions.insert(new InsnNode(DUP));
-			isSurfaceWorld.instructions.insert(new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/Core/CoreHandler", "isSurfaceWorld", "(L" + worldProviderName + ";)I"));
-			isSurfaceWorld.instructions.insert(new VarInsnNode(ALOAD, 0));
-			isSurfaceWorld.instructions.insert(l0);
-		}
-		
-		if (getRandomizedSpawnPoint!=null)
+		if (getRandomizedSpawnPoint != null)
 		{
 			logger.log(Level.INFO, "- Patched getRandomizedSpawnPoint");
-			
+
 			LabelNode l0 = new LabelNode(new Label());
 			LabelNode l1 = new LabelNode(new Label());
 			LabelNode l2 = new LabelNode(new Label());
@@ -265,7 +312,7 @@ public class PSClassTransformer implements IClassTransformer
 			getRandomizedSpawnPoint.instructions.insert(l1);
 			getRandomizedSpawnPoint.instructions.insert(new JumpInsnNode(IFNULL, l2));
 			getRandomizedSpawnPoint.instructions.insert(new InsnNode(DUP));
-			getRandomizedSpawnPoint.instructions.insert(new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/Core/CoreHandler", "getRandomizedSpawnPoint", "(L" + worldProviderName + ";)L"+chunkCoordinatesName+";"));
+			getRandomizedSpawnPoint.instructions.insert(new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/core/CoreHandler", "getRandomizedSpawnPoint", "(L" + worldProviderName + ";)L" + blockPosName + ";", false));
 			getRandomizedSpawnPoint.instructions.insert(new VarInsnNode(ALOAD, 0));
 			getRandomizedSpawnPoint.instructions.insert(l0);
 		}

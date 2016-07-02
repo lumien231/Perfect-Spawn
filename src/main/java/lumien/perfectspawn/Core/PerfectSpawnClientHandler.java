@@ -1,6 +1,6 @@
-package lumien.perfectspawn.Core;
+package lumien.perfectspawn.core;
 
-import lumien.perfectspawn.Core.PerfectSpawnSettings.SettingEntry;
+import lumien.perfectspawn.core.PerfectSpawnSettings.SettingEntry;
 
 public class PerfectSpawnClientHandler
 {

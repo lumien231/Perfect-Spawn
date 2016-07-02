@@ -1,14 +1,14 @@
-package lumien.perfectspawn.Network;
+package lumien.perfectspawn.network;
 
 import org.apache.logging.log4j.Level;
 
-import lumien.perfectspawn.PerfectSpawn;
-import lumien.perfectspawn.Core.PerfectSpawnClientHandler;
-import lumien.perfectspawn.Core.PerfectSpawnSettings.SettingEntry;
 import io.netty.buffer.ByteBuf;
-import cpw.mods.fml.common.network.simpleimpl.IMessage;
-import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
-import cpw.mods.fml.common.network.simpleimpl.MessageContext;
+import lumien.perfectspawn.PerfectSpawn;
+import lumien.perfectspawn.core.PerfectSpawnClientHandler;
+import lumien.perfectspawn.core.PerfectSpawnSettings.SettingEntry;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
+import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
+import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
 public class PerfectSpawnSettingsMessage implements IMessage, IMessageHandler<PerfectSpawnSettingsMessage, IMessage>
 {

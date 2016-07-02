@@ -1,4 +1,4 @@
-package lumien.perfectspawn.Core;
+package lumien.perfectspawn.core;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -6,22 +6,17 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.integrated.IntegratedServer;
-import net.minecraft.world.World;
-import net.minecraftforge.common.DimensionManager;
-
 import org.apache.logging.log4j.Level;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-
 import lumien.perfectspawn.PerfectSpawn;
-import lumien.perfectspawn.Network.MessageHandler;
-import lumien.perfectspawn.Network.PerfectSpawnSettingsMessage;
+import lumien.perfectspawn.network.MessageHandler;
+import lumien.perfectspawn.network.PerfectSpawnSettingsMessage;
+import net.minecraftforge.common.DimensionManager;
+import net.minecraftforge.fml.common.FMLCommonHandler;
 
 public class PerfectSpawnSettings
 {
@@ -123,7 +118,7 @@ public class PerfectSpawnSettings
 		serverStarted();
 
 		SettingEntry se = getValidSettingEntry();
-		if (se != null && MinecraftServer.getServer().worldServerForDimension(se.spawnDimension) != null)
+		if (se != null && FMLCommonHandler.instance().getMinecraftServerInstance().worldServerForDimension(se.spawnDimension) != null)
 		{
 			PSEventHandler.setSpawnPoint(se.spawnDimension, se.spawnX, se.spawnY, se.spawnZ);
 		}
@@ -151,9 +146,9 @@ public class PerfectSpawnSettings
 
 	public SettingEntry getValidSettingEntry()
 	{
-		if (MinecraftServer.getServer().getServerOwner() != null)
+		if (FMLCommonHandler.instance().getMinecraftServerInstance().getServerOwner() != null)
 		{
-			String world = MinecraftServer.getServer().getFolderName();
+			String world = FMLCommonHandler.instance().getMinecraftServerInstance().getFolderName();
 			if (world != null && worldSettings.containsKey(world))
 			{
 				return worldSettings.get(world);
@@ -175,7 +170,7 @@ public class PerfectSpawnSettings
 			SettingEntry se = loadConfigFile(new File(worldDictionary, "PerfectSpawn.json"));
 			if (se != null)
 			{
-				worldSettings.put(MinecraftServer.getServer().getFolderName(), se);
+				worldSettings.put(FMLCommonHandler.instance().getMinecraftServerInstance().getFolderName(), se);
 			}
 		}
 	}

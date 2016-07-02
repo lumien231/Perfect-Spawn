@@ -1,4 +1,4 @@
-package lumien.perfectspawn.Core;
+package lumien.perfectspawn.core;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -6,31 +6,30 @@ import java.util.List;
 import org.apache.logging.log4j.Level;
 
 import lumien.perfectspawn.PerfectSpawn;
-import lumien.perfectspawn.Core.PerfectSpawnSettings.SettingEntry;
-import lumien.perfectspawn.Network.MessageHandler;
-import lumien.perfectspawn.Network.PerfectSpawnSettingsMessage;
-import lumien.perfectspawn.Transformer.MCPNames;
-import cpw.mods.fml.common.Mod.EventHandler;
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
-import net.minecraft.client.Minecraft;
+import lumien.perfectspawn.asm.MCPNames;
+import lumien.perfectspawn.core.PerfectSpawnSettings.SettingEntry;
+import lumien.perfectspawn.network.MessageHandler;
+import lumien.perfectspawn.network.PerfectSpawnSettingsMessage;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.ChunkCoordinates;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
 import net.minecraft.world.WorldServerMulti;
 import net.minecraft.world.storage.DerivedWorldInfo;
 import net.minecraft.world.storage.WorldInfo;
 import net.minecraftforge.common.DimensionManager;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.player.PlayerSleepInBedEvent;
 import net.minecraftforge.event.world.WorldEvent;
+import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
 
 public class PSEventHandler
 {
@@ -56,12 +55,12 @@ public class PSEventHandler
 	@SubscribeEvent
 	public void worldLoaded(WorldEvent.Load event)
 	{
-		if (!event.world.isRemote)
+		if (!event.getWorld().isRemote)
 		{
 			SettingEntry se = PerfectSpawn.settings.getValidSettingEntry();
-			if (se != null && se.spawnDimension == event.world.provider.dimensionId)
+			if (se != null && se.spawnDimension == event.getWorld().provider.getDimension())
 			{
-				this.setSpawnPoint(se.spawnDimension, se.spawnX, se.spawnY, se.spawnZ);
+				setSpawnPoint(se.spawnDimension, se.spawnX, se.spawnY, se.spawnZ);
 			}
 		}
 	}
@@ -83,7 +82,7 @@ public class PSEventHandler
 		{
 			message = new PerfectSpawnSettingsMessage(se);
 		}
-		
+
 		MessageHandler.INSTANCE.sendTo(message, (EntityPlayerMP) event.player);
 
 		if (!event.player.worldObj.isRemote)
@@ -107,7 +106,7 @@ public class PSEventHandler
 				{
 					if (se.spawnDimension != event.player.dimension)
 					{
-						MinecraftServer.getServer().getConfigurationManager().transferPlayerToDimension((EntityPlayerMP) event.player, se.spawnDimension, new PerfectSpawnTeleporter(MinecraftServer.getServer().worldServerForDimension(se.spawnDimension)));
+						FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().transferPlayerToDimension((EntityPlayerMP) event.player, se.spawnDimension, new PerfectSpawnTeleporter(FMLCommonHandler.instance().getMinecraftServerInstance().worldServerForDimension(se.spawnDimension)));
 					}
 					((EntityPlayerMP) event.player).playerNetServerHandler.setPlayerLocation(se.spawnX + 0.5, se.spawnY, se.spawnZ + 0.5, event.player.cameraYaw, event.player.cameraPitch);
 					event.player.getEntityData().setBoolean("psjoined", true);
@@ -120,7 +119,7 @@ public class PSEventHandler
 	public void sleepInBed(PlayerSleepInBedEvent event)
 	{
 		SettingEntry se = null;
-		if (event.entityPlayer.worldObj.isRemote)
+		if (event.getEntityPlayer().worldObj.isRemote)
 		{
 			se = PerfectSpawnClientHandler.currentServerSettings;
 		}
@@ -129,116 +128,130 @@ public class PSEventHandler
 			se = PerfectSpawn.settings.getValidSettingEntry();
 		}
 
-		if (se != null && se.forceBed)
+		if (se != null && se.forceBed && event.getEntityPlayer().worldObj.provider.getDimension() == se.spawnDimension)
 		{
-			WorldProvider provider = event.entityPlayer.worldObj.provider;
-			EntityPlayer player = event.entityPlayer;
+			WorldProvider provider = event.getEntityPlayer().worldObj.provider;
+			EntityPlayer player = event.getEntityPlayer();
 			World worldObj = player.worldObj;
+			BlockPos bedLocation = event.getPos();
 
-			if (provider.dimensionId == se.spawnDimension)
+			if (!player.worldObj.isRemote)
 			{
-				event.result = EntityPlayer.EnumStatus.OK;
 				if (player.isPlayerSleeping() || !player.isEntityAlive())
 				{
-					event.result = EntityPlayer.EnumStatus.OTHER_PROBLEM;
+					event.setResult(EntityPlayer.EnumStatus.OTHER_PROBLEM);
+					return;
 				}
 
-				if (!player.worldObj.isDaytime() && provider.isSurfaceWorld())
+				if (!player.worldObj.provider.isSurfaceWorld())
 				{
-					event.result = EntityPlayer.EnumStatus.NOT_POSSIBLE_NOW;
+					// event.setResult(EntityPlayer.EnumStatus.NOT_POSSIBLE_HERE);
+					// FORCE
 				}
 
-				if (Math.abs(player.posX - (double) event.x) > 3.0D || Math.abs(player.posY - (double) event.y) > 2.0D || Math.abs(player.posZ - (double) event.z) > 3.0D)
+				if (player.worldObj.provider.isSurfaceWorld() && player.worldObj.isDaytime())
 				{
-					event.result = EntityPlayer.EnumStatus.TOO_FAR_AWAY;
+					event.setResult(EntityPlayer.EnumStatus.NOT_POSSIBLE_NOW);
+					return;
+				}
+
+				if (Math.abs(player.posX - (double) bedLocation.getX()) > 3.0D || Math.abs(player.posY - (double) bedLocation.getY()) > 2.0D || Math.abs(player.posZ - (double) bedLocation.getZ()) > 3.0D)
+				{
+					event.setResult(EntityPlayer.EnumStatus.TOO_FAR_AWAY);
+					return;
 				}
 
 				double d0 = 8.0D;
 				double d1 = 5.0D;
-				List list = player.worldObj.getEntitiesWithinAABB(EntityMob.class, AxisAlignedBB.getBoundingBox((double) event.x - d0, (double) event.y - d1, (double) event.z - d0, (double) event.x + d0, (double) event.y + d1, (double) event.z + d0));
+				List<EntityMob> list = player.worldObj.<EntityMob> getEntitiesWithinAABB(EntityMob.class, new AxisAlignedBB((double) bedLocation.getX() - d0, (double) bedLocation.getY() - d1, (double) bedLocation.getZ() - d0, (double) bedLocation.getX() + d0, (double) bedLocation.getY() + d1, (double) bedLocation.getZ() + d0));
 
 				if (!list.isEmpty())
 				{
-					event.result = EntityPlayer.EnumStatus.NOT_SAFE;
+					event.setResult(EntityPlayer.EnumStatus.NOT_SAFE);
+					return;
 				}
 			}
 
 			if (player.isRiding())
 			{
-				player.mountEntity((Entity) null);
+				player.dismountRidingEntity();
 			}
 
-			this.setSize(player, 0.2F, 0.2F);
-			player.yOffset = 0.2F;
+			setSize(player, 0.2F, 0.2F);
 
-			if (player.worldObj.blockExists(event.x, event.y, event.z))
+			IBlockState state = null;
+			if (player.worldObj.isBlockLoaded(bedLocation))
+				state = player.worldObj.getBlockState(bedLocation);
+			if (state != null && state.getBlock().isBed(state, player.worldObj, bedLocation, player))
 			{
-				int l = worldObj.getBlock(event.x, event.y, event.z).getBedDirection(worldObj, event.x, event.y, event.z);
-				float f1 = 0.5F;
+				EnumFacing enumfacing = state.getBlock().getBedDirection(state, player.worldObj, bedLocation);
 				float f = 0.5F;
+				float f1 = 0.5F;
 
-				switch (l)
+				switch (enumfacing)
 				{
-					case 0:
-						f = 0.9F;
+					case SOUTH:
+						f1 = 0.9F;
 						break;
-					case 1:
+					case NORTH:
 						f1 = 0.1F;
 						break;
-					case 2:
+					case WEST:
 						f = 0.1F;
 						break;
-					case 3:
-						f1 = 0.9F;
+					case EAST:
+						f = 0.9F;
 				}
 
-				this.func_71013_b(player, l);
-				player.setPosition((double) ((float) event.x + f1), (double) ((float) event.y + 0.9375F), (double) ((float) event.z + f));
+				setRenderOffsetForSleep(player, enumfacing);
+				player.setPosition((double) ((float) bedLocation.getX() + f), (double) ((float) bedLocation.getY() + 0.6875F), (double) ((float) bedLocation.getZ() + f1));
 			}
 			else
 			{
-				player.setPosition((double) ((float) event.x + 0.5F), (double) ((float) event.y + 0.9375F), (double) ((float) event.z + 0.5F));
+				player.setPosition((double) ((float) bedLocation.getX() + 0.5F), (double) ((float) bedLocation.getY() + 0.6875F), (double) ((float) bedLocation.getZ() + 0.5F));
 			}
 
 			try
 			{
-				sleepTimer.set(player, 0);
 				sleeping.set(player, true);
+				sleepTimer.set(player, 0);
 			}
 			catch (Exception e)
 			{
-				PerfectSpawn.instance.logger.log(Level.ERROR, "Couldn't reflect on player bed data");
+				PerfectSpawn.instance.logger.log(Level.ERROR, "Error reflecting Player Sleep Data");
 				e.printStackTrace();
 			}
 
-			player.playerLocation = new ChunkCoordinates(event.x, event.y, event.z);
+			player.playerLocation = bedLocation;
 			player.motionX = player.motionZ = player.motionY = 0.0D;
 
 			if (!player.worldObj.isRemote)
 			{
 				player.worldObj.updateAllPlayersSleepingFlag();
 			}
+
+			event.setResult(EntityPlayer.EnumStatus.OK);
 		}
 	}
 
-	private void func_71013_b(EntityPlayer player, int par1)
+	private void setRenderOffsetForSleep(EntityPlayer player, EnumFacing facing)
 	{
-		player.field_71079_bU = 0.0F;
-		player.field_71089_bV = 0.0F;
+		player.renderOffsetX = 0.0F;
+		player.renderOffsetZ = 0.0F;
 
-		switch (par1)
+		switch (facing)
 		{
-			case 0:
-				player.field_71089_bV = -1.8F;
+			case SOUTH:
+				player.renderOffsetZ = -1.8F;
 				break;
-			case 1:
-				player.field_71079_bU = 1.8F;
+			case NORTH:
+				player.renderOffsetZ = 1.8F;
 				break;
-			case 2:
-				player.field_71089_bV = 1.8F;
+			case WEST:
+				player.renderOffsetX = 1.8F;
 				break;
-			case 3:
-				player.field_71079_bU = -1.8F;
+			case EAST:
+				player.renderOffsetX = -1.8F;
 		}
 	}
 
@@ -255,7 +268,7 @@ public class PSEventHandler
 				Field f = DerivedWorldInfo.class.getDeclaredField(MCPNames.field("field_76115_a"));
 				f.setAccessible(true);
 				WorldInfo info = (WorldInfo) f.get(worldInfo);
-				info.setSpawnPosition(spawnX, spawnY, spawnZ);
+				info.setSpawn(new BlockPos(spawnX, spawnY, spawnZ));
 			}
 			catch (Exception e)
 			{
@@ -266,54 +279,23 @@ public class PSEventHandler
 		else
 		{
 			WorldInfo info = dimensionWorld.getWorldInfo();
-			info.setSpawnPosition(spawnX, spawnY, spawnZ);
+			info.setSpawn(new BlockPos(spawnX, spawnY, spawnZ));
 		}
 	}
 
-	private void setSize(Entity entity, float par1, float par2)
+	private void setSize(Entity entity, float width, float height)
 	{
-		float f2;
-
-		if (par1 != entity.width || par2 != entity.height)
+		if (width != entity.width || height != entity.height)
 		{
-			f2 = entity.width;
-			entity.width = par1;
-			entity.height = par2;
-			entity.boundingBox.maxX = entity.boundingBox.minX + (double) entity.width;
-			entity.boundingBox.maxZ = entity.boundingBox.minZ + (double) entity.width;
-			entity.boundingBox.maxY = entity.boundingBox.minY + (double) entity.height;
+			float f2 = entity.width;
+			entity.width = width;
+			entity.height = height;
+			entity.setEntityBoundingBox(new AxisAlignedBB(entity.getEntityBoundingBox().minX, entity.getEntityBoundingBox().minY, entity.getEntityBoundingBox().minZ, entity.getEntityBoundingBox().minX + (double) entity.width, entity.getEntityBoundingBox().minY + (double) entity.height, entity.getEntityBoundingBox().minZ + (double) entity.width));
 
 			if (entity.width > f2 && !entity.worldObj.isRemote)
 			{
 				entity.moveEntity((double) (f2 - entity.width), 0.0D, (double) (f2 - entity.width));
 			}
-		}
-
-		f2 = par1 % 2.0F;
-
-		if ((double) f2 < 0.375D)
-		{
-			entity.myEntitySize = Entity.EnumEntitySize.SIZE_1;
-		}
-		else if ((double) f2 < 0.75D)
-		{
-			entity.myEntitySize = Entity.EnumEntitySize.SIZE_2;
-		}
-		else if ((double) f2 < 1.0D)
-		{
-			entity.myEntitySize = Entity.EnumEntitySize.SIZE_3;
-		}
-		else if ((double) f2 < 1.375D)
-		{
-			entity.myEntitySize = Entity.EnumEntitySize.SIZE_4;
-		}
-		else if ((double) f2 < 1.75D)
-		{
-			entity.myEntitySize = Entity.EnumEntitySize.SIZE_5;
-		}
-		else
-		{
-			entity.myEntitySize = Entity.EnumEntitySize.SIZE_6;
 		}
 	}
 }

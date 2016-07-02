@@ -1,11 +1,9 @@
-package lumien.perfectspawn.Transformer;
+package lumien.perfectspawn.asm;
 
 import java.util.Map;
 
-import lumien.perfectspawn.PerfectSpawn;
-import cpw.mods.fml.relauncher.IFMLLoadingPlugin.MCVersion;
-import cpw.mods.fml.relauncher.IFMLLoadingPlugin.TransformerExclusions;
-import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
+import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
+import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin.TransformerExclusions;
 
 //@MCVersion("1.7.10")
 @TransformerExclusions({"lumien.perfectspawn.Transformer.TransformUtils"})

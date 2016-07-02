@@ -1,40 +1,31 @@
 package lumien.perfectspawn;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import static lumien.perfectspawn.PerfectSpawn.MOD_ID;
+import static lumien.perfectspawn.PerfectSpawn.MOD_NAME;
+import static lumien.perfectspawn.PerfectSpawn.MOD_VERSION;
+
 import java.util.Map;
 
-import lumien.perfectspawn.Core.PSEventHandler;
-import lumien.perfectspawn.Core.PerfectSpawnCommand;
-import lumien.perfectspawn.Core.PerfectSpawnSettings;
-import lumien.perfectspawn.Network.MessageHandler;
-
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Logger;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
-
-import net.minecraftforge.common.DimensionManager;
+import lumien.perfectspawn.core.PSEventHandler;
+import lumien.perfectspawn.core.PerfectSpawnSettings;
+import lumien.perfectspawn.core.Commands.PerfectSpawnCommand;
+import lumien.perfectspawn.core.Commands.RespawnCommand;
+import lumien.perfectspawn.network.MessageHandler;
 import net.minecraftforge.common.MinecraftForge;
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.Mod.EventHandler;
-import cpw.mods.fml.common.Mod.Instance;
-import cpw.mods.fml.common.event.FMLInitializationEvent;
-import cpw.mods.fml.common.event.FMLPostInitializationEvent;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.event.FMLServerStartedEvent;
-import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import cpw.mods.fml.common.network.NetworkCheckHandler;
-import cpw.mods.fml.relauncher.Side;
-import static lumien.perfectspawn.PerfectSpawn.*;
+import net.minecraftforge.common.config.Configuration;
+import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventHandler;
+import net.minecraftforge.fml.common.Mod.Instance;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLServerStartedEvent;
+import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
+import net.minecraftforge.fml.common.network.NetworkCheckHandler;
+import net.minecraftforge.fml.relauncher.Side;
 
 @Mod(modid = MOD_ID, name = MOD_NAME, version = MOD_VERSION)
 public class PerfectSpawn
@@ -44,23 +35,33 @@ public class PerfectSpawn
 	public static final String MOD_VERSION = "@VERSION@";
 
 	public Logger logger;
-	public boolean enabled;
+	public boolean respawnUser;
 	
 	@Instance(MOD_ID)
 	public static PerfectSpawn instance;
 	
 	public static PerfectSpawnSettings settings;
-
-	@EventHandler
-	public void preInit(FMLPreInitializationEvent event)
-	{
-		logger = event.getModLog();
-	}
 	
 	@NetworkCheckHandler
 	public boolean checkRemote(Map<String,String> mods,Side remoteSide)
 	{
 		return true;
+	}
+	
+	@EventHandler
+	public void preInit(FMLPreInitializationEvent event)
+	{
+		logger = event.getModLog();
+		
+		Configuration c = new Configuration(event.getSuggestedConfigurationFile());
+		c.load();
+		
+		respawnUser = c.getBoolean("RespawnCommandUser", "Settings", false, "Whether a normal user can use the /respawn command on himself");
+		
+		if (c.hasChanged())
+		{
+			c.save();
+		}
 	}
 
 	@EventHandler
@@ -86,6 +87,7 @@ public class PerfectSpawn
 	public void serverStarting(FMLServerStartingEvent event)
 	{
 		event.registerServerCommand(new PerfectSpawnCommand());
+		event.registerServerCommand(new RespawnCommand());
 	}
 	
 	@EventHandler

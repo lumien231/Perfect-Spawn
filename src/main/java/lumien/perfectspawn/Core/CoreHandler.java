@@ -1,23 +1,14 @@
-package lumien.perfectspawn.Core;
+package lumien.perfectspawn.core;
 
 import lumien.perfectspawn.PerfectSpawn;
-import lumien.perfectspawn.Core.PerfectSpawnSettings.SettingEntry;
-import cpw.mods.fml.common.FMLCommonHandler;
+import lumien.perfectspawn.core.PerfectSpawnSettings.SettingEntry;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.network.play.server.S05PacketSpawnPosition;
-import net.minecraft.network.play.server.S07PacketRespawn;
-import net.minecraft.network.play.server.S1FPacketSetExperience;
-import net.minecraft.network.play.server.S2BPacketChangeGameState;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.management.ItemInWorldManager;
-import net.minecraft.server.management.ServerConfigurationManager;
-import net.minecraft.util.ChunkCoordinates;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
-import net.minecraft.world.WorldServer;
-import net.minecraft.world.demo.DemoWorldManager;
 import net.minecraftforge.common.DimensionManager;
+import net.minecraftforge.fml.common.FMLCommonHandler;
 
 public class CoreHandler
 {
@@ -28,7 +19,7 @@ public class CoreHandler
 		if (!testingRespawnDimension)
 		{
 			SettingEntry se = null;
-			if (provider.worldObj.isRemote)
+			if (player.worldObj.isRemote)
 			{
 				se = PerfectSpawnClientHandler.currentServerSettings;
 			}
@@ -51,6 +42,28 @@ public class CoreHandler
 		return -126;
 	}
 
+	public static boolean canWakeUp(EntityPlayer player)
+	{
+		SettingEntry se = null;
+		if (player.worldObj.isRemote)
+		{
+			se = PerfectSpawnClientHandler.currentServerSettings;
+		}
+		else
+		{
+			se = PerfectSpawn.settings.getValidSettingEntry();
+		}
+
+		if (se != null)
+		{
+			if (se.forceBed && player.worldObj.provider.getDimension() == se.spawnDimension && !player.worldObj.provider.isSurfaceWorld())
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public static boolean isBlockNotProtectedByDimension(int dimension)
 	{
 		return !isBlockProtectedByDimension(dimension);
@@ -68,7 +81,7 @@ public class CoreHandler
 		{
 			se = PerfectSpawn.settings.getValidSettingEntry();
 		}
-
+		
 		if (se == null || !se.spawnProtection)
 		{
 			return dimension == 0;
@@ -79,10 +92,11 @@ public class CoreHandler
 		}
 	}
 
-	public static ChunkCoordinates getRandomizedSpawnPoint(WorldProvider provider)
+	public static BlockPos getRandomizedSpawnPoint(WorldProvider provider)
 	{
+		boolean isRemote = FMLCommonHandler.instance().getEffectiveSide().isClient();
 		SettingEntry se = null;
-		if (provider.worldObj.isRemote)
+		if (isRemote)
 		{
 			se = PerfectSpawnClientHandler.currentServerSettings;
 		}
@@ -91,7 +105,7 @@ public class CoreHandler
 			se = PerfectSpawn.settings.getValidSettingEntry();
 		}
 
-		if (se != null && se.exactSpawn && se.spawnDimension == provider.dimensionId)
+		if (se != null && se.exactSpawn && se.spawnDimension == provider.getDimension())
 		{
 			return provider.getSpawnPoint();
 		}
@@ -100,8 +114,9 @@ public class CoreHandler
 
 	public static int canRespawnHere(WorldProvider provider)
 	{
+		boolean isRemote = FMLCommonHandler.instance().getEffectiveSide().isClient();
 		SettingEntry se = null;
-		if (provider.worldObj.isRemote)
+		if (isRemote)
 		{
 			se = PerfectSpawnClientHandler.currentServerSettings;
 		}
@@ -112,13 +127,14 @@ public class CoreHandler
 
 		if (se != null)
 		{
-			if (provider.dimensionId == 0)
-			{
-				return 0;
-			}
-			if (provider.dimensionId == se.spawnDimension)
+			if (provider.getDimension() == se.spawnDimension)
 			{
 				return 1;
+			}
+			
+			if (provider.getDimension() == 0)
+			{
+				return 0;
 			}
 		}
 

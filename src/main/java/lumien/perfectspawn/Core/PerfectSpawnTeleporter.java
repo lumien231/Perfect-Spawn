@@ -1,4 +1,4 @@
-package lumien.perfectspawn.Core;
+package lumien.perfectspawn.core;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.world.Teleporter;
