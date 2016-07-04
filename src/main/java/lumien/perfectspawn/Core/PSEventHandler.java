@@ -108,7 +108,7 @@ public class PSEventHandler
 					{
 						FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().transferPlayerToDimension((EntityPlayerMP) event.player, se.spawnDimension, new PerfectSpawnTeleporter(FMLCommonHandler.instance().getMinecraftServerInstance().worldServerForDimension(se.spawnDimension)));
 					}
-					((EntityPlayerMP) event.player).playerNetServerHandler.setPlayerLocation(se.spawnX + 0.5, se.spawnY, se.spawnZ + 0.5, event.player.cameraYaw, event.player.cameraPitch);
+					((EntityPlayerMP) event.player).connection.setPlayerLocation(se.spawnX + 0.5, se.spawnY, se.spawnZ + 0.5, event.player.cameraYaw, event.player.cameraPitch);
 					event.player.getEntityData().setBoolean("psjoined", true);
 				}
 			}
@@ -139,7 +139,7 @@ public class PSEventHandler
 			{
 				if (player.isPlayerSleeping() || !player.isEntityAlive())
 				{
-					event.setResult(EntityPlayer.EnumStatus.OTHER_PROBLEM);
+					event.setResult(EntityPlayer.SleepResult.OTHER_PROBLEM);
 					return;
 				}
 
@@ -151,13 +151,13 @@ public class PSEventHandler
 
 				if (player.worldObj.provider.isSurfaceWorld() && player.worldObj.isDaytime())
 				{
-					event.setResult(EntityPlayer.EnumStatus.NOT_POSSIBLE_NOW);
+					event.setResult(EntityPlayer.SleepResult.NOT_POSSIBLE_NOW);
 					return;
 				}
 
 				if (Math.abs(player.posX - (double) bedLocation.getX()) > 3.0D || Math.abs(player.posY - (double) bedLocation.getY()) > 2.0D || Math.abs(player.posZ - (double) bedLocation.getZ()) > 3.0D)
 				{
-					event.setResult(EntityPlayer.EnumStatus.TOO_FAR_AWAY);
+					event.setResult(EntityPlayer.SleepResult.TOO_FAR_AWAY);
 					return;
 				}
 
@@ -167,7 +167,7 @@ public class PSEventHandler
 
 				if (!list.isEmpty())
 				{
-					event.setResult(EntityPlayer.EnumStatus.NOT_SAFE);
+					event.setResult(EntityPlayer.SleepResult.NOT_SAFE);
 					return;
 				}
 			}
@@ -230,7 +230,7 @@ public class PSEventHandler
 				player.worldObj.updateAllPlayersSleepingFlag();
 			}
 
-			event.setResult(EntityPlayer.EnumStatus.OK);
+			event.setResult(EntityPlayer.SleepResult.OK);
 		}
 	}
 

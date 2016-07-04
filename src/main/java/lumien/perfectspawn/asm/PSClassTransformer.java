@@ -68,7 +68,7 @@ public class PSClassTransformer implements IClassTransformer
 
 	private byte[] patchEntityPlayer(byte[] data)
 	{
-		logger.log(Level.INFO, "Patching EntityPlayer Class");
+		logger.log(Level.DEBUG, "Patching EntityPlayer Class");
 		ClassNode classNode = new ClassNode();
 		ClassReader classReader = new ClassReader(data);
 		classReader.accept(classNode, 0);
@@ -101,7 +101,7 @@ public class PSClassTransformer implements IClassTransformer
 						AbstractInsnNode nextNode = onUpdate.instructions.get(i + 1);
 						if (nextNode != null && nextNode instanceof JumpInsnNode)
 						{
-							logger.log(Level.INFO, "- Patched Staying in Bed Check");
+							logger.log(Level.DEBUG, "- Patched Staying in Bed Check");
 							JumpInsnNode jin = (JumpInsnNode) nextNode;
 
 							InsnList toInsert = new InsnList();
@@ -117,7 +117,7 @@ public class PSClassTransformer implements IClassTransformer
 
 		}
 
-		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 		classNode.accept(writer);
 
 		return writer.toByteArray();
@@ -125,7 +125,7 @@ public class PSClassTransformer implements IClassTransformer
 
 	private byte[] patchDedicatedServer(byte[] data)
 	{
-		logger.log(Level.INFO, "Patching DedicatedServer Class");
+		logger.log(Level.DEBUG, "Patching DedicatedServer Class");
 		ClassNode classNode = new ClassNode();
 		ClassReader classReader = new ClassReader(data);
 		classReader.accept(classNode, 0);
@@ -153,9 +153,9 @@ public class PSClassTransformer implements IClassTransformer
 					MethodInsnNode min = (MethodInsnNode) ain;
 					if (min.getOpcode() == INVOKEVIRTUAL)
 					{
-						if (min.name.equals(MCPNames.method("func_186068_a")))
+						if (min.name.equals("getDimension"))
 						{
-							logger.log(Level.INFO, "- Patched Spawn Protection Control");
+							logger.log(Level.DEBUG, "- Patched Spawn Protection Control");
 
 							isBlockProtected.instructions.insert(min, new MethodInsnNode(INVOKESTATIC, "lumien/perfectspawn/core/CoreHandler", "isBlockNotProtectedByDimension", "(I)Z", false));
 							break;
@@ -173,7 +173,7 @@ public class PSClassTransformer implements IClassTransformer
 
 	private byte[] patchBed(byte[] data)
 	{
-		logger.log(Level.INFO, "Patching Bed Class");
+		logger.log(Level.DEBUG, "Patching Bed Class");
 		ClassNode classNode = new ClassNode();
 		ClassReader classReader = new ClassReader(data);
 		classReader.accept(classNode, 0);
@@ -201,10 +201,10 @@ public class PSClassTransformer implements IClassTransformer
 					FieldInsnNode fin = (FieldInsnNode) ain;
 					if (fin.getOpcode() == GETSTATIC)
 					{
-						String biomegenbase = "Lnet/minecraft/world/biome/BiomeGenBase;";
+						String biomegenbase = "Lnet/minecraft/world/biome/Biome;";
 						if (fin.desc.equals(biomegenbase))
 						{
-							logger.log(Level.INFO, "- Patched Bed Biome Restriction");
+							logger.log(Level.DEBUG, "- Patched Bed Biome Restriction");
 							onBlockActivated.instructions.insert(ain, new InsnNode(ACONST_NULL));
 							onBlockActivated.instructions.remove(ain);
 							break;
@@ -231,7 +231,7 @@ public class PSClassTransformer implements IClassTransformer
 		String isSurfaceWorldName = MCPNames.method("func_76569_d");
 		String getRandomizedSpawnPointName = "getRandomizedSpawnPoint";
 
-		logger.log(Level.INFO, "Patching " + classNode.name);
+		logger.log(Level.DEBUG, "Patching " + classNode.name);
 
 		MethodNode canRespawnHere = null;
 		MethodNode getRespawnDimension = null;
@@ -262,7 +262,7 @@ public class PSClassTransformer implements IClassTransformer
 
 		if (canRespawnHere != null)
 		{
-			logger.log(Level.INFO, "- Patched canRespawnHere");
+			logger.log(Level.DEBUG, "- Patched canRespawnHere");
 			LabelNode l0 = new LabelNode(new Label());
 			LabelNode l1 = new LabelNode(new Label());
 			LabelNode l2 = new LabelNode(new Label());
@@ -280,7 +280,7 @@ public class PSClassTransformer implements IClassTransformer
 
 		if (getRespawnDimension != null)
 		{
-			logger.log(Level.INFO, "- Patched getRespawnDimension");
+			logger.log(Level.DEBUG, "- Patched getRespawnDimension");
 			String entityPlayerMPName = "net/minecraft/entity/player/EntityPlayerMP";
 			LabelNode l0 = new LabelNode(new Label());
 			LabelNode l1 = new LabelNode(new Label());
@@ -300,7 +300,7 @@ public class PSClassTransformer implements IClassTransformer
 
 		if (getRandomizedSpawnPoint != null)
 		{
-			logger.log(Level.INFO, "- Patched getRandomizedSpawnPoint");
+			logger.log(Level.DEBUG, "- Patched getRandomizedSpawnPoint");
 
 			LabelNode l0 = new LabelNode(new Label());
 			LabelNode l1 = new LabelNode(new Label());

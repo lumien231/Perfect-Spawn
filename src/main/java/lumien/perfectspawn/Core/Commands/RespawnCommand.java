@@ -54,7 +54,7 @@ public class RespawnCommand extends CommandBase
 
 		if (player != null)
 		{
-			player.playerNetServerHandler.playerEntity = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().recreatePlayerEntity((EntityPlayerMP) player, player.dimension, false);
+			player.connection.playerEntity = FMLCommonHandler.instance().getMinecraftServerInstance().getPlayerList().recreatePlayerEntity((EntityPlayerMP) player, player.dimension, false);
 		}
 	}
 
