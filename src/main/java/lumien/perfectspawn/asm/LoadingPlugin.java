@@ -3,19 +3,16 @@ package lumien.perfectspawn.asm;
 import java.util.Map;
 
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
-import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin.TransformerExclusions;
 
-//@MCVersion("1.7.10")
-@TransformerExclusions({"lumien.perfectspawn.Transformer.TransformUtils"})
 @IFMLLoadingPlugin.SortingIndex(1001)
-public class PSLoadingPlugin implements IFMLLoadingPlugin
+public class LoadingPlugin implements IFMLLoadingPlugin
 {
-	public static boolean IN_MCP;
-	
+	public static boolean IN_MCP = false;
+
 	@Override
 	public String[] getASMTransformerClass()
 	{
-		return new String[] { PSClassTransformer.class.getName() };
+		return new String[] { ClassTransformer.class.getName() };
 	}
 
 	@Override
@@ -33,7 +30,7 @@ public class PSLoadingPlugin implements IFMLLoadingPlugin
 	@Override
 	public void injectData(Map<String, Object> data)
 	{
-		IN_MCP = !(Boolean)data.get("runtimeDeobfuscationEnabled");
+		IN_MCP = !(Boolean) data.get("runtimeDeobfuscationEnabled");
 	}
 
 	@Override
@@ -41,4 +38,5 @@ public class PSLoadingPlugin implements IFMLLoadingPlugin
 	{
 		return null;
 	}
+
 }
