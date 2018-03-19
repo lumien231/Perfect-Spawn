@@ -111,8 +111,8 @@ public class ClassTransformer implements IClassTransformer
 						toInsert.add(new MethodInsnNode(INVOKESTATIC, asmHandler, "unloadWorld", "(I)Z", false));
 						toInsert.add(new JumpInsnNode(IFEQ, skipNode));
 						toInsert.add(new VarInsnNode(ALOAD, 0));
-						toInsert.add(new FieldInsnNode(GETFIELD, "net/minecraft/world/gen/ChunkProviderServer", "world", "Lnet/minecraft/world/WorldServer;"));
-						toInsert.add(new FieldInsnNode(GETFIELD,  "net/minecraft/world/WorldServer", "provider", "Lnet/minecraft/world/WorldProvider;"));
+						toInsert.add(new FieldInsnNode(GETFIELD, "net/minecraft/world/gen/ChunkProviderServer", MCPNames.field("field_73251_h"), "Lnet/minecraft/world/WorldServer;"));
+						toInsert.add(new FieldInsnNode(GETFIELD,  "net/minecraft/world/WorldServer", MCPNames.field("field_73011_w"), "Lnet/minecraft/world/WorldProvider;"));
 						toInsert.add(new MethodInsnNode(INVOKEVIRTUAL, "net/minecraft/world/WorldProvider", "getDimension", "()I", false));
 						
 						tick.instructions.insertBefore(min, toInsert);
